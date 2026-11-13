@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"image"
 	"io"
-	"os/exec"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -48,7 +47,7 @@ func processStickerFile(parent context.Context, input *mediaFile, mimeOverride, 
 			args = []string{"-y", "-t", "10", "-i", input.Path, "-vf", "fps=15,scale=512:512", "-loop", "0", "-an", "-vsync", "0", "-fs", "1000000", "-c:v", "libwebp", "-qscale:v", "10"}
 		}
 		args = append(args, "-f", "webp", converted.Path)
-		cmd := exec.CommandContext(ctx, "ffmpeg", args...)
+		cmd := termuxCommand(ctx, "ffmpeg", args...)
 		var diagnostics cappedMediaLog
 		cmd.Stdout = &diagnostics
 		cmd.Stderr = &diagnostics

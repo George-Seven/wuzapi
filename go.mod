@@ -61,6 +61,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/joho/godotenv v1.5.1
+	github.com/klauspost/compress v1.18.0
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	go.mau.fi/libsignal v0.2.2 // indirect
@@ -70,3 +71,7 @@ require (
 	golang.org/x/sys v0.48.0
 	rsc.io/qr v0.2.0 // indirect
 )
+
+replace go.mau.fi/whatsmeow => ./whatsmeow
+
+replace github.com/klauspost/compress => ./compress

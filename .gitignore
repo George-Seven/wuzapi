@@ -40,3 +40,15 @@ NEW_FEATS.md
 *.code-workspace
 **/*.code-workspace
 .vscode/workspaceStorage/
+
+# Patch application and merge leftovers. Keep numbered patches in patches/ tracked.
+*.rej
+*.orig
+*.bak
+*.backup
+*~
+*.patch.tmp
+*.diff.tmp
+.patch-tmp/
+patch-tmp/
+patches/.tmp/

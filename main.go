@@ -510,9 +510,19 @@ func main() {
 		panic(err)
 	}
 	exPath := filepath.Dir(ex)
+	if err := configureTermuxBinaries(exPath); err != nil {
+		_ = cleanupTermuxBinaries()
+		log.Fatal().Err(err).Msg("Failed to configure bundled Termux binaries")
+	}
+	defer func() {
+		if err := cleanupTermuxBinaries(); err != nil {
+			log.Error().Err(err).Msg("Failed to remove bundled Termux resources")
+		}
+	}()
 
 	db, err := InitializeDatabase(exPath, *dataDir)
 	if err != nil {
+		_ = cleanupTermuxBinaries()
 		log.Fatal().Err(err).Msg("Failed to initialize database")
 		os.Exit(1)
 	}
@@ -546,12 +556,14 @@ func main() {
 	}
 
 	if err != nil {
+		_ = cleanupTermuxBinaries()
 		log.Fatal().Err(err).Msg("Error creating sqlstore")
 		os.Exit(1)
 	}
 
 	// Initialize the schema
 	if err = initializeSchema(db); err != nil {
+		_ = cleanupTermuxBinaries()
 		log.Fatal().Err(err).Msg("Failed to initialize schema")
 		// Perform cleanup before exiting
 		if err := db.Close(); err != nil {
@@ -616,11 +628,17 @@ func startHTTPMode(s *server) {
 
 				if err := srv.Shutdown(ctx); err != nil {
 					log.Error().Err(err).Msg("Failed to stop server")
+					if cleanupErr := cleanupTermuxBinaries(); cleanupErr != nil {
+						log.Error().Err(cleanupErr).Msg("Failed to remove bundled Termux resources")
+					}
 					os.Exit(1)
 				}
 
 				if err := shutdownMedia(ctx); err != nil {
 					log.Error().Err(err).Msg("Media shutdown did not finish")
+				}
+				if err := cleanupTermuxBinaries(); err != nil {
+					log.Error().Err(err).Msg("Failed to remove bundled Termux resources")
 				}
 				log.Info().Msg("Server Exited Properly")
 				os.Exit(0)
@@ -633,17 +651,21 @@ func startHTTPMode(s *server) {
 
 			if *sslcert != "" && *sslprivkey != "" {
 				if _, err := os.Stat(*sslcert); os.IsNotExist(err) {
+					_ = cleanupTermuxBinaries()
 					log.Fatal().Err(err).Msg("SSL certificate file does not exist")
 				}
 				if _, err := os.Stat(*sslprivkey); os.IsNotExist(err) {
+					_ = cleanupTermuxBinaries()
 					log.Fatal().Err(err).Msg("SSL private key file does not exist")
 				}
 			}
 			if err := srv.ListenAndServeTLS(*sslcert, *sslprivkey); err != nil && err != http.ErrServerClosed {
+				_ = cleanupTermuxBinaries()
 				log.Fatal().Err(err).Msg("HTTPS server failed to start")
 			}
 		} else {
 			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				_ = cleanupTermuxBinaries()
 				log.Fatal().Err(err).Msg("HTTP server failed to start")
 			}
 		}
@@ -663,6 +685,9 @@ func startStdioMode(s *server) {
 	}
 	if err != nil {
 		log.Error().Err(err).Msg("Stdio server error")
+		if err := cleanupTermuxBinaries(); err != nil {
+			log.Error().Err(err).Msg("Failed to remove bundled Termux resources")
+		}
 		os.Exit(1)
 	}
 	log.Info().Msg("Stdio server exited properly")
