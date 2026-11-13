@@ -1795,7 +1795,7 @@ paths:
       tags:
         - Chat 
       summary: Sends an audio message
-      description: Sends an audio message (must be base64 encoded in opus format, mime type audio/ogg)
+      description: Accepts base64 data URLs or HTTP URLs containing audio. With ptt true (default), converts to metadata-stripped mono 48 kHz OGG/Opus using FFmpeg/libopus; input is limited to 16 MiB and five minutes, with a 45-second conversion timeout. With ptt false, sends the supplied audio in its original format without transcoding.
       security:
         - ApiKeyAuth: []
       requestBody:
@@ -1878,6 +1878,51 @@ paths:
             application/json:
               schema:
                 example: {"code":200,"data":{"Details":"Sent","Id":"90B2F8B13FAC8A9CF6B06E99C7834DC5","Timestamp":"2022-04-20T12:49:08-03:00"},"success":true}
+  /chat/send/gif:
+    post:
+      tags:
+        - Chat
+      summary: Sends an animated GIF message
+      description: Converts an animated GIF or video into a short, silent H.264 MP4, then sends it with WhatsApp GIF playback enabled. Seconds defaults to 6 and must be between 1 and 6. JSON accepts a data URL or HTTP URL in Gif; multipart/form-data accepts a Gif file upload. Inputs are limited to 100 MiB.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/definitions/MessageGIF'
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - Phone
+                - Gif
+              properties:
+                Phone:
+                  type: string
+                  example: "5491155553935"
+                Gif:
+                  type: string
+                  format: binary
+                Caption:
+                  type: string
+                Id:
+                  type: string
+                Seconds:
+                  type: integer
+                  minimum: 1
+                  maximum: 6
+                  default: 6
+      responses:
+        200:
+          description: GIF sent
+          content:
+            application/json:
+              schema:
+                example: {"code":200,"data":{"Details":"GIF sent","Id":"3EB0ABC123","Seconds":4,"Timestamp":1794476708},"success":true}
+        422:
+          description: Input could not be converted to GIF playback video
   /chat/send/sticker:
     post:
       tags:
@@ -2443,6 +2488,29 @@ paths:
             application/json:
               schema:
                 example: { "code": 200, "data": { "Details": "Disappearing timer set successfully" }, "success": true }
+  /chat/ephemeral:
+    post:
+      tags:
+        - Chat
+      summary: Set disappearing timer for a direct chat
+      description: Sets the timer for a one-to-one chat. Phone may be a phone number, user JID, or LID. Group and channel JIDs are rejected. The setting applies going forward and does not read or change the account-wide default timer.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/definitions/ChatEphemeral'
+      responses:
+        200:
+          description: Timer updated
+          content:
+            application/json:
+              schema:
+                example: {"code":200,"data":{"Details":"Disappearing timer set successfully","ChatJID":"15551234567@s.whatsapp.net","Duration":"24h"},"success":true}
+        400:
+          description: Invalid phone/JID, group/channel destination, or duration
   /group/photo/remove:
     post:
       tags:
@@ -4214,6 +4282,31 @@ definitions:
         $ref: "#/definitions/ContextInfo"
       QuotedMessage:
         $ref: "#/definitions/QuotedMessage"
+  MessageGIF:
+    type: object
+    required:
+      - Phone
+      - Gif
+    properties:
+      Phone:
+        type: string
+        example: "5491155553935"
+      Gif:
+        type: string
+        description: Data URL or HTTP URL containing an animated GIF or video.
+        example: "data:video/mp4;base64,AAAAIGZ0eXBpc29t..."
+      Caption:
+        type: string
+        example: "Look at this"
+      Id:
+        type: string
+        example: "ABCDABCD1234"
+      Seconds:
+        type: integer
+        minimum: 1
+        maximum: 6
+        default: 6
+        example: 4
   MessageSticker:
     type: object
     required: 
@@ -4637,6 +4730,22 @@ definitions:
         type: boolean
         description: Whether to lock the group (true) or unlock it (false). When locked, only admins can modify group info.
         example: true
+
+  ChatEphemeral:
+    type: object
+    required:
+      - Phone
+      - Duration
+    properties:
+      Phone:
+        type: string
+        description: International phone number, direct user JID, or LID. Groups and channels are rejected.
+        example: "15551234567"
+      Duration:
+        type: string
+        description: Timer duration for new chat messages; off disables disappearing messages.
+        enum: ["24h", "7d", "90d", "off"]
+        example: "24h"
 
   GroupEphemeral:
     type: object

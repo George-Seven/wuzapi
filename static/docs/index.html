@@ -864,6 +864,31 @@
             </div>
 
             <div class="endpoint">
+                <h3><span class="method post">POST</span> <span class="path">/chat/send/gif</span></h3>
+                <p>Sends an animated GIF or video as looping GIF playback. The server converts it to a silent H.264 MP4 and sets WhatsApp's GIF playback flag.</p>
+                <p>Send JSON with a data URL or HTTP URL in <code>Gif</code>, or upload a file with <code>multipart/form-data</code>.</p>
+                <h4>Multipart Example:</h4>
+                <pre><code class="language-bash">curl -X POST http://localhost:8080/chat/send/gif \
+  -H 'token: YOUR_USER_TOKEN' \
+  -F 'Phone=15551234567' \
+  -F 'Gif=@clip.mp4' \
+  -F 'Seconds=4' \
+  -F 'Caption=Example'</code></pre>
+                <p><code>Seconds</code> defaults to 6 and must be 1–6. Inputs may be up to 100 MiB; output is scaled to fit 512×512, encoded at 15 fps, and has no audio.</p>
+            </div>
+
+            <div class="endpoint">
+                <h3><span class="method post">POST</span> <span class="path">/chat/ephemeral</span></h3>
+                <p>Sets disappearing messages for a one-to-one chat. The setting applies going forward. International phone numbers, direct user JIDs, and LIDs are accepted; groups and channels are rejected.</p>
+                <h4>Request Example:</h4>
+                <pre><code class="language-json">{
+  "Phone": "15551234567",
+  "Duration": "24h"
+}</code></pre>
+                <p><code>Duration</code> must be <code>24h</code>, <code>7d</code>, <code>90d</code>, or <code>off</code>. This endpoint does not read or change the account-wide default timer.</p>
+            </div>
+
+            <div class="endpoint">
                 <h3><span class="method get">GET</span> <span class="path">/chat/history</span></h3>
                 <p>Recover the message history of a specific chat. Returns the messages in reverse chronological order (most recent first).</p>
                 <p>Use <code>chat_jid=index</code> to list only the authenticated user's conversations, keyed by their user ID. Each entry contains <code>chat_jid</code> and <code>last_updated</code>, newest first. Returns an empty object when the user has no stored messages. History must be enabled. Other users' conversation metadata is never included. Stdio: <code>chat.history</code> with <code>chat_jid: "index"</code>.</p>

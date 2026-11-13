@@ -119,7 +119,23 @@ function initDemo() {
   "Image": "data:image/jpeg;base64,...",
   "Caption": "Look at this image!"
 }`},
-        { type: 'received', content: 'You can also send other media types like audio, documents and videos.' }
+        { type: 'received', content: 'For looping animated GIF playback, use /chat/send/gif with a GIF or video file and set the optional duration (up to 6 seconds).' },
+        { type: 'code', content: `POST /chat/send/gif (multipart/form-data)
+Phone=55912345678
+Gif=@clip.mp4
+Seconds=4`},
+        { type: 'received', content: 'The server converts it to a silent MP4 and sends it with WhatsApp GIF playback enabled.' }
+    ],
+    'ephemeral': [
+        { type: 'sent', content: 'How do I enable disappearing messages in a direct chat?' },
+        { type: 'typing', content: '' },
+        { type: 'received', content: 'Use /chat/ephemeral with the destination and one of the supported durations:' },
+        { type: 'code', content: `POST /chat/ephemeral
+{
+  "Phone": "15551234567",
+  "Duration": "24h"
+}`},
+        { type: 'received', content: 'Duration can be 24h, 7d, 90d, or off. The endpoint accepts phone numbers, direct user JIDs, and LIDs; groups and channels are rejected.' }
     ],
     'webhook': [
         { type: 'sent', content: 'How do I set up webhooks to receive messages?' },

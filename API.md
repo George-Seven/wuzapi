@@ -1158,7 +1158,7 @@ an `Id` does not provide idempotency and does not replace an existing history ro
 
 ## Send Audio Message
 
-Sends an Audio message. Audio must be in Opus format and base64 encoded in embedded format.
+Sends an Audio message. `Audio` may be a base64 data URL or HTTP URL containing an audio file. With `ptt: true` (the default), the server converts it to metadata-stripped mono 48 kHz OGG/Opus at 24 kbit/s with FFmpeg/libopus; inputs are limited to 16 MiB and five minutes, and conversion has a 45-second timeout. With `ptt: false`, the supplied audio is sent in its original format without transcoding. `Seconds` is optional message metadata.
 
 Endpoint: _/chat/send/audio_
 
@@ -1213,6 +1213,27 @@ Method: **POST**
 ```
 curl -X POST -H 'Token: 1234ABCD' -H 'Content-Type: application/json' --data '{"Phone":"5491155554444","Caption":"Look at this", "Video":"data:image/jpeg;base64,iVBORw0KGgoAAAANSU..."}' http://localhost:8080/chat/send/video
 ```
+
+## Send an Animated GIF
+
+`POST /chat/send/gif` sends an animated GIF or video as WhatsApp GIF playback.
+The input is transcoded to a short, silent H.264 MP4, uploaded as video, and
+marked with WhatsApp's GIF playback flag. `Seconds` is optional and defaults
+to 6; it must be between 1 and 6. The endpoint accepts either JSON containing
+a data URL or HTTP URL in `Gif`, or a multipart upload with a `Gif` file.
+
+```sh
+curl -X POST http://localhost:8080/chat/send/gif \
+  -H 'token: YOUR_USER_TOKEN' \
+  -F 'Phone=15551234567' \
+  -F 'Gif=@clip.mp4' \
+  -F 'Seconds=4' \
+  -F 'Caption=Example'
+```
+
+Inputs up to 100 MiB are accepted. The generated clip is scaled to fit within
+512×512, encoded at 15 fps, and has no audio. Success returns the usual message
+ID and timestamp fields. Conversion failures return 422.
 
 
 ---
@@ -1855,6 +1876,29 @@ Response:
   "success": true
 }
 ```
+
+---
+
+## Set disappearing timer for a direct chat
+
+Configures disappearing messages for a one-to-one chat. The setting applies to
+the chat going forward. `Phone` accepts an international phone number, a user
+JID, or a LID; groups and channels are rejected.
+
+Endpoint: `POST /chat/ephemeral`
+
+Valid `Duration` values are `24h`, `7d`, `90d`, and `off`:
+
+```sh
+curl -X POST http://localhost:8080/chat/ephemeral \
+  -H 'token: YOUR_USER_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{"Phone":"15551234567","Duration":"24h"}'
+```
+
+Success returns the resolved `ChatJID` and selected duration in the standard
+response envelope. This endpoint sets the direct-chat timer; it does not read or
+change the account-wide default timer.
 
 ---
 

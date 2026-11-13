@@ -1,6 +1,8 @@
 package main
 
 import (
+	"embed"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,14 +15,10 @@ import (
 
 type Middleware = alice.Constructor
 
+//go:embed static
+var embeddedStatic embed.FS
+
 func (s *server) routes() {
-
-	ex, err := os.Executable()
-	if err != nil {
-		panic(err)
-	}
-	exPath := filepath.Dir(ex)
-
 	var routerLog zerolog.Logger
 	logOutput := os.Stdout
 	if s.mode == Stdio {
@@ -119,6 +117,7 @@ func (s *server) routes() {
 	s.router.Handle("/chat/send/document", c.Then(s.SendDocument())).Methods("POST")
 	//	s.router.Handle("/chat/send/template", c.Then(s.SendTemplate())).Methods("POST")
 	s.router.Handle("/chat/send/video", c.Then(s.SendVideo())).Methods("POST")
+	s.router.Handle("/chat/send/gif", c.Then(s.SendGIF())).Methods("POST")
 	s.router.Handle("/chat/send/sticker", c.Then(s.SendSticker())).Methods("POST")
 	s.router.Handle("/chat/send/location", c.Then(s.SendLocation())).Methods("POST")
 	s.router.Handle("/chat/send/contact", c.Then(s.SendContact())).Methods("POST")
@@ -142,6 +141,7 @@ func (s *server) routes() {
 	s.router.Handle("/chat/conversations", c.Then(s.ListConversations())).Methods("GET")
 	s.router.Handle("/chat/messages", c.Then(s.ListChatMessages())).Methods("GET")
 	s.router.Handle("/chat/send/voice", c.Then(s.SendVoiceRecording())).Methods("POST")
+	s.router.Handle("/chat/ephemeral", c.Then(s.SetChatDisappearingTimer())).Methods("POST")
 	s.router.Handle("/chat/request-unavailable-message", c.Then(s.RequestUnavailableMessage())).Methods("POST")
 	s.router.Handle("/chat/archive", c.Then(s.ArchiveChat())).Methods("POST")
 
@@ -197,5 +197,9 @@ func (s *server) routes() {
 	s.router.Handle("/newsletter/leave", c.Then(s.NewsletterLeave())).Methods("POST")
 	s.router.Handle("/newsletter/mute", c.Then(s.NewsletterMute())).Methods("POST")
 
-	s.router.PathPrefix("/").Handler(http.FileServer(http.Dir(exPath + "/static/")))
+	staticFiles, err := fs.Sub(embeddedStatic, "static")
+	if err != nil {
+		panic(err)
+	}
+	s.router.PathPrefix("/").Handler(http.FileServer(http.FS(staticFiles)))
 }

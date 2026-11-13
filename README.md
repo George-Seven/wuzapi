@@ -56,6 +56,23 @@ When HMAC is configured, all webhooks include an `x-hmac-signature` header with 
 go build .
 ```
 
+### Termux build
+
+Inside Termux, build WuzAPI with bundled `ffmpeg` using:
+
+```sh
+./build_termux.sh
+```
+
+Pass `--run-test` to separately compile the smoke runner under `tests/`, extract
+the generated zstd archive, and verify that the bundled tool runs:
+
+```sh
+./build_termux.sh --run-test
+```
+
+An output path can also be supplied with `--output PATH`.
+
 ## Homebrew installation
 
 To install `wuzapi` via [Homebrew](https://brew.sh) use:
