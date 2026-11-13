@@ -1310,6 +1310,34 @@ func (s *server) SendAudio() http.HandlerFunc {
 			return
 		}
 		defer media.Close()
+		ptt := true
+		if t.PTT != nil {
+			ptt = *t.PTT
+		}
+		convertedToOpus, _ := r.Context().Value(convertedVoiceContextKey{}).(bool)
+		// Voice notes use the same metadata-stripping Opus conversion as /voice.
+		// Regular audio is preserved in its supplied format, matching WhatsApp's
+		// native audio-message path and avoiding a lossy transcode.
+		if ptt && !convertedToOpus {
+			input, openErr := media.Open()
+			if openErr != nil {
+				s.Respond(w, r, http.StatusInternalServerError, errors.New("could not open audio"))
+				return
+			}
+			converted, convertErr := convertClientRecording(r.Context(), input)
+			input.Close()
+			if convertErr != nil {
+				s.Respond(w, r, http.StatusUnprocessableEntity, convertErr)
+				return
+			}
+			defer converted.Close()
+			media = converted
+			convertedToOpus = true
+		}
+		if convertedToOpus {
+			// The converted payload is OGG/Opus, regardless of the input MIME.
+			t.MimeType = "audio/ogg; codecs=opus"
+		}
 		sniffed, err := media.sniff()
 		if err != nil {
 			s.Respond(w, r, http.StatusInternalServerError, err)
@@ -1318,11 +1346,6 @@ func (s *server) SendAudio() http.HandlerFunc {
 		detectedMime := ""
 		if strings.HasPrefix(t.Audio, "data:audio/") || strings.HasPrefix(strings.ToLower(media.MIME), "audio/") {
 			detectedMime = media.MIME
-		}
-
-		ptt := true
-		if t.PTT != nil {
-			ptt = *t.PTT
 		}
 
 		var mime string
@@ -1346,6 +1369,14 @@ func (s *server) SendAudio() http.HandlerFunc {
 			s.Respond(w, r, http.StatusInternalServerError, errors.New(fmt.Sprintf("failed to upload file: %v", err)))
 			return
 		}
+		waveform := t.Waveform
+		if ptt && len(waveform) == 0 {
+			waveform, err = generateAudioWaveform(r.Context(), media.Path)
+			if err != nil {
+				log.Warn().Err(err).Msg("Could not generate audio waveform; sending voice note without one")
+				waveform = nil
+			}
+		}
 
 		msg := &waE2E.Message{
 			AudioMessage: &waE2E.AudioMessage{
@@ -1358,7 +1389,7 @@ func (s *server) SendAudio() http.HandlerFunc {
 				FileLength:    proto.Uint64(uint64(media.Size)),
 				PTT:           &ptt,
 				Seconds:       proto.Uint32(t.Seconds),
-				Waveform:      t.Waveform,
+				Waveform:      waveform,
 			},
 		}
 

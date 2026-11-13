@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os/exec"
 	"strconv"
 	"time"
 )
@@ -152,6 +151,8 @@ func (s *server) ListChatMessages() http.HandlerFunc {
 
 const clientRecordingMaxBytes = 16 << 20
 
+type convertedVoiceContextKey struct{}
+
 func convertClientRecording(parent context.Context, input io.Reader) (*mediaFile, error) {
 	ctx, cancel, err := mediaContext(parent)
 	if err != nil {
@@ -192,9 +193,10 @@ func convertClientRecording(parent context.Context, input io.Reader) (*mediaFile
 	out.Close()
 	// Restrict demuxers and protocols so uploaded recordings cannot act as
 	// playlists or trigger network fetches. The generated paths are private.
-	cmd := exec.CommandContext(ctx, "ffmpeg", "-nostdin", "-v", "error", "-y", "-protocol_whitelist", "file,pipe",
+	cmd := termuxCommand(ctx, "ffmpeg", "-nostdin", "-v", "error", "-y", "-protocol_whitelist", "file,pipe",
 		"-format_whitelist", "matroska,webm,ogg,mov,mp4,m4a,3gp,3g2,mj2,wav,mp3,flac,aac",
-		"-i", source.Path, "-map", "0:a:0", "-vn", "-t", "300", "-ac", "1", "-ar", "48000", "-c:a", "libopus", "-b:a", "24k", "-fs", "2097152", "-f", "ogg", output.Path)
+		"-i", source.Path, "-map", "0:a:0", "-map_metadata", "-1", "-map_metadata:s", "-1", "-map_chapters", "-1",
+		"-vn", "-t", "300", "-ac", "1", "-ar", "48000", "-c:a", "libopus", "-b:a", "24k", "-fs", "2097152", "-f", "ogg", output.Path)
 	var diagnostics cappedMediaLog
 	cmd.Stderr = &diagnostics
 	if err = cmd.Run(); err != nil {
@@ -276,6 +278,7 @@ func (s *server) SendVoiceRecording() http.HandlerFunc {
 			return
 		}
 		request := r.Clone(r.Context())
+		request = request.WithContext(context.WithValue(request.Context(), convertedVoiceContextKey{}, true))
 		request.Body = io.NopCloser(bytes.NewReader(body))
 		request.ContentLength = int64(len(body))
 		request.Header = r.Header.Clone()
